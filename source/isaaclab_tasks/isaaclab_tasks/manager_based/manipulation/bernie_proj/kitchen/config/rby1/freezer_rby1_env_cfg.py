@@ -4,6 +4,7 @@ from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config.rby1.j
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.utils import configclass
 from isaaclab.assets import ArticulationCfg
+from isaaclab.managers import EventTermCfg as EventTerm
 
 
 @configclass

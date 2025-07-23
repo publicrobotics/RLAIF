@@ -126,20 +126,20 @@ class EventCfg:
     )
 
     # joints
-    # reset_object = EventTerm(
-    #     func=mdp.reset_joints_by_offset,
-    #     mode="reset",
-    #     params={
-    #         "pose_range":
-    #         {
-    #             "x": (0.25, 0.75),
-    #             "y": (0, 0.5),
-    #             "z": (0.75, 1.25),
-    #         },
-    #         "velocity_range": {},
-    #         "asset_cfg": SceneEntityCfg("object"),
-    #     },
-    # )
+    reset_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "pose_range":
+            {
+                "x": (0.25, 0.75),
+                "y": (0, 0.5),
+                "z": (0.75, 1.25),
+            },
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("object"),
+        },
+    )
 
 
 

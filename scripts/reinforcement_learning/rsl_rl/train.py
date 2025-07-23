@@ -92,6 +92,8 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
+# RLAIF enviornments
+# TODO: remove old objects. Include real world objects
 
 # Bernie_Proj Enviornments
 from isaaclab_tasks.manager_based.manipulation.bernie_proj import box, door, tray, pot, cabinet

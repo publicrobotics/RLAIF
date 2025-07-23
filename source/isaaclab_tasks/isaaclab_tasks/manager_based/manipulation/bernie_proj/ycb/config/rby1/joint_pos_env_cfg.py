@@ -5,7 +5,7 @@
 
 
 from isaaclab.utils import configclass
-from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.lift_env_cfg import LiftEnvCfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_env_cfg import LiftEnvCfg
 from isaaclab.assets import ArticulationCfg
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
