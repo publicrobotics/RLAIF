@@ -96,9 +96,10 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 # TODO: remove old objects. Include real world objects
 
 # Bernie_Proj Enviornments
-from isaaclab_tasks.manager_based.manipulation.bernie_proj import box, door, tray, pot, cabinet
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config, ycb_rby1_lift_env_cfg, ycb_rby1_pick_and_place_env_cfg, ycb_rby1_push_env_cfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 

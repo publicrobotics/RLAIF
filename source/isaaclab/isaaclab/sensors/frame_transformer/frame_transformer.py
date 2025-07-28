@@ -180,6 +180,14 @@ class FrameTransformer(SensorBase):
         # First element is None because source frame offset is handled separately
         frame_offsets = [None] + [target_frame.offset for target_frame in self.cfg.target_frames]
         frame_types = ["source"] + ["target"] * len(self.cfg.target_frames)
+
+        root_path = "/World/envs/env_0"
+        prim_list = sim_utils.get_all_matching_child_prims(root_path)
+
+        # Print their full paths
+        prim_names = [str(prim.GetPath()) for prim in prim_list]
+        print(prim_names)
+
         for frame, prim_path, offset, frame_type in zip(frames, frame_prim_paths, frame_offsets, frame_types):
             # Find correct prim
             matching_prims = sim_utils.find_matching_prims(prim_path)

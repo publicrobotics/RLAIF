@@ -66,6 +66,12 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.manager_based.manipulation.lift import mdp
 from isaaclab_tasks.utils import parse_env_cfg
 
+# Bernie_Proj Enviornments
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
+
 
 def pre_process_actions(
     teleop_data: tuple[np.ndarray, bool] | list[tuple[np.ndarray, np.ndarray, np.ndarray]], num_envs: int, device: str
