@@ -25,6 +25,7 @@ def object_is_lifted(
     return torch.where(object.data.root_pos_w[:, 2] > minimal_height, 1.0, 0.0)
 
 
+# use this for push
 def object_ee_distance(
     env: ManagerBasedRLEnv,
     std: float,
@@ -45,6 +46,10 @@ def object_ee_distance(
     return 1 - torch.tanh(object_ee_distance / std)
 
 
+# do one where you then go from object to object_pose (goal position)
+
+
+# lift by some minimal height
 def object_goal_distance(
     env: ManagerBasedRLEnv,
     std: float,
@@ -65,3 +70,29 @@ def object_goal_distance(
     distance = torch.norm(des_pos_w - object.data.root_pos_w[:, :3], dim=1)
     # rewarded if the object is lifted above the threshold
     return (object.data.root_pos_w[:, 2] > minimal_height) * (1 - torch.tanh(distance / std))
+
+
+def object_goal_distance_xy_no_lift(
+    env: ManagerBasedRLEnv,
+    std: float,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    goal_object_cfg: SceneEntityCfg = SceneEntityCfg("goal_object"),
+) -> torch.Tensor:
+    """Planar XY tracking reward between two scene objects.
+    No commands, no lift gate — just minimize XY distance between `object` and `goal_object`."""
+    # typed handles
+    obj: RigidObject = env.scene[object_cfg.name]
+    goal: RigidObject = env.scene[goal_object_cfg.name]
+
+    # positions in world
+    obj_xy = obj.data.root_pos_w[:, :2]      # (N, 2)
+    goal_xy = goal.data.root_pos_w[:, :2]    # (N, 2)
+
+    # planar distance
+    planar_dist = torch.linalg.vector_norm(obj_xy - goal_xy, dim=1)  # (N,)
+
+    # robust scaling (avoid div-by-zero if std==0)
+    scale = torch.as_tensor(std, device=planar_dist.device, dtype=planar_dist.dtype).clamp_min(1e-6)
+
+    # tanh kernel
+    return 1.0 - torch.tanh(planar_dist / scale)
