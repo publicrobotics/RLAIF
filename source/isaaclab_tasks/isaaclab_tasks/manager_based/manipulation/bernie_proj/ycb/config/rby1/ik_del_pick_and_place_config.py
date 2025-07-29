@@ -57,9 +57,8 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
                     max_angular_velocity=1000.0,
                     max_linear_velocity=1000.0,
                     max_depenetration_velocity=5.0,
-                    disable_gravity=True,
+                    disable_gravity=False,
                 ),
-                collision_props=CollisionPropertiesCfg(collision_enabled=False)
             ),
         )
 
