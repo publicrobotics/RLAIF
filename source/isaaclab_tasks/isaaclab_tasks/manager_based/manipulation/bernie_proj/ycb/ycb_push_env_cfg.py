@@ -126,6 +126,8 @@ class ObservationsCfg:
 class EventCfg:
     """Configuration for events."""
 
+    reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
     """
     this is to reset all of the objects to
     their original state
@@ -145,15 +147,31 @@ class EventCfg:
         params={
             "pose_range":
             {
-                "x": (0.10, 0.25),
-                "y": (0.30, 0.50),
-                "z": (0.775, 0.775),
+                "x": (-0.05, 0.00),
+                "y": (0.05, 0.10),
+                "z": (0.10, 0.10),
             },
             "velocity_range": {},
-            "asset_cfg": SceneEntityCfg("object"),
+            "asset_cfg": SceneEntityCfg("object", body_names=".*"),
         },
     )
 
+    # start and reset position for the pot
+    reset_goal_object = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range":
+            {
+                "x": (0.00, 0.05),
+                "y": (0.20, 0.25),
+                "z": (0.025, 0.025),
+            },
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("goal_object", body_names=".*"),
+        },
+    )
+ 
 
 @configclass
 class RewardsCfg:
@@ -163,13 +181,13 @@ class RewardsCfg:
 
     object_goal_tracking = RewTerm(
         func=mdp.object_goal_distance_xy_no_lift,
-        params={"std": 0.3},
+        params={"std": 0.5},
         weight=16.0,
     )
 
     object_goal_tracking_fine_grained = RewTerm(
         func=mdp.object_goal_distance_xy_no_lift,
-        params={"std": 0.05},
+        params={"std": 0.1},
         weight=5.0,
     )
 

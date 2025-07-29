@@ -40,6 +40,10 @@ def object_ee_distance(
     cube_pos_w = object.data.root_pos_w
     # End-effector position: (num_envs, 3)
     ee_w = ee_frame.data.target_pos_w[..., 0, :]
+
+    # print("ee frame: ", ee_w)
+    # print("object_pos: ", cube_pos_w)
+
     # Distance of the end-effector to the object: (num_envs,)
     object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
 
@@ -85,14 +89,18 @@ def object_goal_distance_xy_no_lift(
     goal: RigidObject = env.scene[goal_object_cfg.name]
 
     # positions in world
-    obj_xy = obj.data.root_pos_w[:, :2]      # (N, 2)
-    goal_xy = goal.data.root_pos_w[:, :2]    # (N, 2)
+    obj_xy = obj.data.root_pos_w[:, :2]   # (N, 2)
+    goal_xy = goal.data.root_pos_w[:, :2]   # (N, 2)
 
-    # planar distance
-    planar_dist = torch.linalg.vector_norm(obj_xy - goal_xy, dim=1)  # (N,)
+    # print("obj_xy: ", obj_xy)
+    # print("goal_xy: ", goal_xy)
 
-    # robust scaling (avoid div-by-zero if std==0)
-    scale = torch.as_tensor(std, device=planar_dist.device, dtype=planar_dist.dtype).clamp_min(1e-6)
+    object_ee_distance = torch.norm(goal_xy - obj_xy, dim=1)
 
-    # tanh kernel
-    return 1.0 - torch.tanh(planar_dist / scale)
+    # print("object_ee_distance: ", object_ee_distance)
+    # print("std: ", std)
+    # print("Reward: ", torch.tanh(object_ee_distance / std))
+
+    # print("Rewards: ", (1 - torch.tanh(object_ee_distance / std)))
+
+    return 1 - torch.tanh(object_ee_distance / std)

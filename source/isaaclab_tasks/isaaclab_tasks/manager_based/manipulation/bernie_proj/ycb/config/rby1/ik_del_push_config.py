@@ -49,9 +49,9 @@ class RBY1TeleopPush(YCBPushEnvCfg):
 
         self.scene.goal_object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/goal_object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.15, 0.825], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.05, 0.825], rot=[1, 0, 0, 0]),
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/ycb/banana.usd",
+                usd_path="/home/davin123/PoliGen/assets/ycb/banana_goal.usd",
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -62,14 +62,16 @@ class RBY1TeleopPush(YCBPushEnvCfg):
                     disable_gravity=True,
                 ),
                 collision_props=CollisionPropertiesCfg(collision_enabled=False),
-                visual_material=PreviewSurfaceCfg(diffuse_color=(0.65, 0.88, 0.67))
+                visual_material=PreviewSurfaceCfg(diffuse_color=(0.45, 0.88, 0.67))
             ),
         )
 
+        # instead of having an init position, having a start up position might be best
         # Set Cube as object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.15, 0, 0.055], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.35, 0.825], rot=[1, 0, 0, 0]),
+            debug_vis=True,
             spawn=UsdFileCfg(
                 usd_path="/home/davin123/PoliGen/assets/ycb/banana.usd",
                 scale=(0.8, 0.8, 0.8),
@@ -223,12 +225,12 @@ class RBY1TeleopPush(YCBPushEnvCfg):
         marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
         marker_cfg.prim_path = "/Visuals/FrameTransformer"
         self.scene.ee_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/RB_Y1_V1_0_1/link_left_arm_0",
-            debug_vis=False,
+            prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_0",
+            debug_vis=True,
             visualizer_cfg=marker_cfg,
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Robot/RB_Y1_V1_0_1/link_left_arm_6",
+                    prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_6",
                     name="end_effector",
                     offset=OffsetCfg(
                         pos=[0.0, 0.0, -0.275],

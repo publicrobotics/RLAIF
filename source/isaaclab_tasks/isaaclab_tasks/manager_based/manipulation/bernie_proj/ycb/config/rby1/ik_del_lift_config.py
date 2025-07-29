@@ -202,12 +202,12 @@ class RBY1TeleopLift(YCBLiftEnvCfg):
         marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
         marker_cfg.prim_path = "/Visuals/FrameTransformer"
         self.scene.ee_frame = FrameTransformerCfg(
-            prim_path="{ENV_REGEX_NS}/Robot/RB_Y1_V1_0_1/link_left_arm_0",
+            prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_0",
             debug_vis=False,
             visualizer_cfg=marker_cfg,
             target_frames=[
                 FrameTransformerCfg.FrameCfg(
-                    prim_path="{ENV_REGEX_NS}/Robot/RB_Y1_V1_0_1/link_left_arm_6",
+                    prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_6",
                     name="end_effector",
                     offset=OffsetCfg(
                         pos=[0.0, 0.0, -0.275],
