@@ -17,12 +17,45 @@ if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
 
+# this is just for the min height
 def object_is_lifted(
     env: ManagerBasedRLEnv, minimal_height: float, object_cfg: SceneEntityCfg = SceneEntityCfg("object")
 ) -> torch.Tensor:
     """Reward the agent for lifting the object above the minimal height."""
     object: RigidObject = env.scene[object_cfg.name]
     return torch.where(object.data.root_pos_w[:, 2] > minimal_height, 1.0, 0.0)
+
+
+# This method will use height in intervals
+def object_height_shaped(
+    env: ManagerBasedRLEnv,
+    goal_height: float,
+    min_height: float = 0.0,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    kernel: str = "tanh",
+    std: float = 0.05
+) -> torch.Tensor:
+    """
+    Returns a value in [0, 1] that increases as the object’s Z approaches
+    `goal_height`.  At/above the goal, the reward saturates at 1.
+
+    • "linear":   0     …→ 1  between min_height and goal_height
+    • "tanh"  :   smooth sigmoid‑like curve controlled by `std`
+    """
+    obj: RigidObject = env.scene[object_cfg.name]
+    z = obj.data.root_pos_w[:, 2]
+
+    if kernel == "linear":
+        # clamp to [0, 1]
+        return torch.clamp((z - min_height) / (goal_height - min_height), 0.0, 1.0)
+
+    elif kernel == "tanh":
+        # positive distance still to go (≤0 means we’re at/above the goal)
+        d = torch.clamp(goal_height - z, min=0.0)
+        return 1.0 - torch.tanh(d / std)
+
+    else:
+        raise ValueError(f"Unknown kernel '{kernel}'")
 
 
 # use this for push
@@ -40,9 +73,6 @@ def object_ee_distance(
     cube_pos_w = object.data.root_pos_w
     # End-effector position: (num_envs, 3)
     ee_w = ee_frame.data.target_pos_w[..., 0, :]
-
-    # print("ee frame: ", ee_w)
-    # print("object_pos: ", cube_pos_w)
 
     # Distance of the end-effector to the object: (num_envs,)
     object_ee_distance = torch.norm(cube_pos_w - ee_w, dim=1)
