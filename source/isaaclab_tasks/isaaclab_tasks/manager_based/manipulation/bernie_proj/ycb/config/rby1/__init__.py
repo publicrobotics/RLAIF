@@ -17,13 +17,14 @@ from . import agents
 
 
 """
-Teleoperation
+Teleoperation Enviornment setup
+# Current Default enviornments for Banana
 """ 
 gym.register(
     id="YCBS-Teleop-PickAndPlace",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.ik_del_pick_and_place_config:RBY1TeleopPickAndPlace",
+        "env_cfg_entry_point": f"{__name__}.ik_del_pick_and_place_config:RBY1TeleopPickAndPlaceBanana",
     },
     disable_env_checker=True,
 )
@@ -32,7 +33,7 @@ gym.register(
     id="YCBS-Teleop-Lift",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.ik_del_lift_config:RBY1TeleopLift",
+        "env_cfg_entry_point": f"{__name__}.ik_del_lift_config:RBY1TeleopLiftBanana",
     },
     disable_env_checker=True,
 )
@@ -41,7 +42,7 @@ gym.register(
     id="YCBS-Teleop-Push",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.ik_del_push_config:RBY1TeleopPush",
+        "env_cfg_entry_point": f"{__name__}.ik_del_push_config:RBY1TeleopPushBanana",
     },
     disable_env_checker=True,
 )

@@ -1,13 +1,22 @@
-from isaaclab.utils import configclass
-
 # Copyright (c) 2022-2024, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
+from isaaclab.utils import configclass
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.utils import configclass
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb import mdp
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, CollisionPropertiesCfg
+from isaaclab.sim.spawners.from_files import UsdFileCfg
+from isaaclab.utils import configclass
+from isaaclab.assets import ArticulationCfg
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_pick_and_place_env_cfg import YCBPickAndPlaceEnvCfg
+import os
+import pathlib
+workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
 # for ee_Frame
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
@@ -17,39 +26,28 @@ FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
 # Pre-defined configs
 ##
 from isaaclab.envs.mdp.actions import DifferentialInverseKinematicsActionCfg, DifferentialIKControllerCfg
-
-##
-# Pre-defined configs
-##
-
 from isaaclab.assets import (
     RigidObjectCfg,
 )
-from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, CollisionPropertiesCfg
-from isaaclab.sim.spawners.from_files import UsdFileCfg
-
-
-from isaaclab.utils import configclass
-from isaaclab.assets import ArticulationCfg
-import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
-from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_pick_and_place_env_cfg import YCBPickAndPlaceEnvCfg
-
-import os
-import pathlib
-workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
 
 @configclass
-class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
+class _RBY1TeleopPickAndPlaceBase(YCBPickAndPlaceEnvCfg):
+    """Shared Pick‑and‑Place config; subclasses just override `OBJ_NAME`."""
+    OBJ_NAME: str = "banana"                      # gets overridden below
+    ASSET_DIR = "/home/davin123/PoliGen/assets"
+
     def __post_init__(self):
         super().__post_init__()
 
-        self.scene.box = RigidObjectCfg(
+        # Box that the object is placed into
+        self.scene.goal_object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/box",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.40, 0, 0.75], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=[0.40, 0.0, 0.75], rot=[1, 0, 0, 0]
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/box.usd",
+                usd_path=f"{self.ASSET_DIR}/box.usd",
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -62,12 +60,16 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
             ),
         )
 
-        # Set Cube as object
+        # YCB object start object
+        obj_usd = f"{self.ASSET_DIR}/ycb/{self.OBJ_NAME}.usd"
+
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.15, 0, 0.055], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=[0.15, 0.0, 0.055], rot=[1, 0, 0, 0]
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/ycb/banana.usd",
+                usd_path=obj_usd,
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -80,10 +82,11 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
             ),
         )
 
+        # track robot
         self.scene.robot = ArticulationCfg(
             prim_path="{ENV_REGEX_NS}/Robot",
             spawn=sim_utils.UsdFileCfg(
-                usd_path=str(workspace) + "/assets/RBY1.usd",
+                usd_path=f"{workspace}/assets/RBY1.usd",
                 activate_contact_sensors=False,
                 rigid_props=sim_utils.RigidBodyPropertiesCfg(
                     max_depenetration_velocity=5.0,
@@ -98,30 +101,17 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
             init_state=ArticulationCfg.InitialStateCfg(
                 pos=(0.0, 0.0, 0.1),
                 joint_pos={
-                    "left_arm_0": 0.0,
-                    "left_arm_1": 0.0,
-                    "left_arm_2": 0.0,
-                    "left_arm_3": 0.0,
-                    "left_arm_4": 0.0,
-                    "left_arm_5": 0.0,
-                    "left_arm_6": 0.0,
-                    "right_arm_0": 0.0,
-                    "right_arm_1": 0.0,
-                    "right_arm_2": 0.0,
-                    "right_arm_3": 0.0,
-                    "right_arm_4": 0.0,
-                    "right_arm_5": 0.0,
-                    "right_arm_6": 0.0,
+                    # left arm
+                    **{f"left_arm_{i}": 0.0 for i in range(7)},
+                    # right arm
+                    **{f"right_arm_{i}": 0.0 for i in range(7)},
+                    # gripper
                     "gripper_finger_l1": -0.05,
                     "gripper_finger_l2": 0.05,
                     "gripper_finger_r1": -0.05,
                     "gripper_finger_r2": 0.05,
-                    "torso_0": 0.0,
-                    "torso_1": 0.0,
-                    "torso_2": 0.0,
-                    "torso_3": 0.0,
-                    "torso_4": 0.0,
-                    "torso_5": 0.0,
+                    # torso & head
+                    **{f"torso_{i}": 0.0 for i in range(6)},
                     "head_0": 0.0,
                     "head_1": 0.0,
                 },
@@ -186,38 +176,29 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
             soft_joint_pos_limit_factor=1.0,
         )
 
-        # Kinova Arm Actions
+        # track arm actions
         self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot",
             joint_names=["left_arm_[0-6]"],
             body_name="link_left_arm_6",
-            controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
+            controller=DifferentialIKControllerCfg(
+                command_type="pose", use_relative_mode=True, ik_method="dls"
+            ),
             scale=0.5,
-            # body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.107]),
         )
 
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["gripper_finger_l1", "gripper_finger_l2"],
-            open_command_expr={
-                "gripper_finger_l1": 0.0,     # left fully open (max)
-                "gripper_finger_l2": 0.0,     # right fully open (min)
-            },
-            close_command_expr={
-                "gripper_finger_l1": -0.05,   # left fully closed
-                "gripper_finger_l2": 0.05,   # right fully closed
-            },
+            open_command_expr={"gripper_finger_l1": 0.0, "gripper_finger_l2": 0.0},
+            close_command_expr={"gripper_finger_l1": -0.05, "gripper_finger_l2": 0.05},
         )
-    
-        # End effector name
-        # self.commands.object_pose.body_name = "ee_left"
 
-
-        # here I will be specifying the ee_frame position
-        # Listens to the required transforms
+        # tracking ee
         marker_cfg = FRAME_MARKER_CFG.copy()
         marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
         marker_cfg.prim_path = "/Visuals/FrameTransformer"
+
         self.scene.ee_frame = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_0",
             debug_vis=False,
@@ -226,9 +207,42 @@ class RBY1TeleopPickAndPlace(YCBPickAndPlaceEnvCfg):
                 FrameTransformerCfg.FrameCfg(
                     prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_6",
                     name="end_effector",
-                    offset=OffsetCfg(
-                        pos=[0.0, 0.0, -0.275],
-                    ),
+                    offset=OffsetCfg(pos=[0.0, 0.0, -0.275]),
                 ),
             ],
         )
+
+
+@configclass
+class RBY1TeleopPickAndPlaceBanana(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "banana"
+
+
+@configclass
+class RBY1TeleopPickAndPlaceCup(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "cup"
+
+
+@configclass
+class RBY1TeleopPickAndPlaceRubrik(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "rubrik"          # spelling as supplied
+
+
+@configclass
+class RBY1TeleopPickAndPlacePitcher(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "pitcher"
+
+
+@configclass
+class RBY1TeleopPickAndPlaceBlock(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "block"
+
+
+@configclass
+class RBY1TeleopPickAndPlaceDice(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "dice"
+
+
+@configclass
+class RBY1TeleopPickAndPlaceBottle(_RBY1TeleopPickAndPlaceBase):
+    OBJ_NAME: str = "bottle"

@@ -92,29 +92,17 @@ def main() -> None:
     env_cfg.terminations.time_out = None
     if "Lift" in args_cli.task:
         # set the resampling time range to large number to avoid resampling
-        env_cfg.commands.object_pose.resampling_time_range = (1.0e9, 1.0e9)
-        # add termination condition for reaching the goal otherwise the environment won't reset
-        env_cfg.terminations.object_reached_goal = DoneTerm(func=mdp.object_reached_goal)
-
-    if args_cli.xr:
-        # External cameras are not supported with XR teleop
-        # Check for any camera configs and disable them
-        env_cfg = remove_camera_configs(env_cfg)
-        env_cfg.sim.render.antialiasing_mode = "DLSS"
-
-    try:
-        # create environment
-        env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
-        # check environment name (for reach , we don't allow the gripper)
-        if "Reach" in args_cli.task:
-            omni.log.warn(
-                f"The environment '{args_cli.task}' does not support gripper control. The device command will be"
-                " ignored."
-            )
-    except Exception as e:
-        omni.log.error(f"Failed to create environment: {e}")
-        simulation_app.close()
-        return
+        # env_cfg.commands.object_pose.resampling_time_range = (1.0e9, 1.0e9)
+        # # add termination condition for reaching the goal otherwise the environment won't reset
+        # env_cfg.terminations.object_reached_goal = DoneTerm(func=mdp.object_reached_goal)
+        print("WENT INTO LIFT")
+    # create environment
+    env = gym.make(args_cli.task, cfg=env_cfg).unwrapped
+    # check environment name (for reach , we don't allow the gripper)
+    if "Reach" in args_cli.task:
+        omni.log.warn(
+            f"The environment '{args_cli.task}' does not support gripper control. The device command will be ignored."
+        )
 
     # Flags for controlling teleoperation flow
     should_reset_recording_instance = False

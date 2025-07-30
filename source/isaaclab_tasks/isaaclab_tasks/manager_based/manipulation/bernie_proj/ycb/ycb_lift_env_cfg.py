@@ -52,6 +52,8 @@ class YCBLiftSceneCfg(InteractiveSceneCfg):
     # target object: will be populated by agent env cfg
     object: RigidObjectCfg | DeformableObjectCfg = MISSING
 
+    goal_object: RigidObjectCfg | DeformableObjectCfg = MISSING
+
     # Table
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
@@ -107,6 +109,10 @@ class ObservationsCfg:
         object_pos = ObsTerm(func=mdp.root_pos_w_object)
         object_quat = ObsTerm(func=mdp.root_quat_w_object)
 
+        # goal objects pose
+        goal_object_pos = ObsTerm(func=mdp.root_pos_w_goal_object)
+        goal_object_quat = ObsTerm(func=mdp.root_quat_w_goal_object)
+
         # robot pose
         robot_pos = ObsTerm(func=mdp.root_pos_w)
         robot_quat = ObsTerm(func=mdp.root_quat_w)
@@ -123,9 +129,11 @@ class ObservationsCfg:
 class EventCfg:
     """Configuration for events."""
 
+    # reset scene assets
+    reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
     """
-    this is to reset all of the objects to
-    their original state
+    reset robot state
     """
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
@@ -133,11 +141,9 @@ class EventCfg:
         params={"pose_range": {}, "velocity_range": {}},
     )
 
-    # start up positin for the robot
-
-    # start and reset position for the pot
-    reset_object = EventTerm(
-        func=mdp.reset_root_state_uniform,
+    # reset start and goal state positions
+    reset_objects = EventTerm(
+        func=mdp.reset_start_goal_state_uniform,
         mode="reset",
         params={
             "pose_range":
@@ -147,7 +153,6 @@ class EventCfg:
                 "z": (0.80, 0.80),
             },
             "velocity_range": {},
-            "asset_cfg": SceneEntityCfg("object"),
         },
     )
 
@@ -155,9 +160,28 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # TODO: This will be LLM generated
-    # action_l2 = RewTerm(func=mdp.action_l2, weight=-0.01)
-    pass
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
+
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance_z,
+        params={"std": 0.5},
+        weight=16.0,
+    )
+
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance_z,
+        params={"std": 0.1},
+        weight=5.0,
+    )
+
+    # action penalty
+    action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
+
+    joint_vel = RewTerm(
+        func=mdp.joint_vel_l2,
+        weight=-1e-4,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+    )
 
 
 @configclass

@@ -1,57 +1,96 @@
-from isaaclab.utils import configclass
-
 # Copyright (c) 2022-2024, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
+from isaaclab.utils import configclass
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.utils import configclass
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb import mdp
-
-# for ee_Frame
-from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
-FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
-
-##
-# Pre-defined configs
-##
-from isaaclab.envs.mdp.actions import DifferentialInverseKinematicsActionCfg, DifferentialIKControllerCfg
-
-##
-# Pre-defined configs
-##
-
-from isaaclab.assets import (
-    RigidObjectCfg,
-)
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
 from isaaclab.sim.spawners.from_files import UsdFileCfg
-
-
 from isaaclab.utils import configclass
 from isaaclab.assets import ArticulationCfg
 import isaaclab.sim as sim_utils
 from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_lift_env_cfg import YCBLiftEnvCfg
+from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
+FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, CollisionPropertiesCfg
+from isaaclab.sim.spawners.materials import PreviewSurfaceCfg
 
+##
+# Pre-defined configs
+##
+from isaaclab.envs.mdp.actions import DifferentialInverseKinematicsActionCfg, DifferentialIKControllerCfg
+from isaaclab.assets import (
+    RigidObjectCfg,
+)
+
+# For path names
 import os
 import pathlib
 workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
-
+from pathlib import Path
+from typing import Literal
+ASSET_ROOT = Path("/home/davin123/PoliGen/assets/ycb")  # folder where *.usd files live
 
 @configclass
 class RBY1TeleopLift(YCBLiftEnvCfg):
+    # --------------- NEW FIELDS ---------------
+    object_name: Literal[
+        "banana", "cup", "block", "bottle", "dice", "pitcher", "rubrik"
+    ] = "banana"
+
+    # optional per‑object scale overrides
+    object_scale: dict[str, tuple[float, float, float]] = {
+        "banana": (0.8, 0.8, 0.8),
+        "cup": (1.0, 1.0, 1.0),
+        "block": (0.6, 0.6, 0.6),
+        "bottle": (0.9, 0.9, 0.9),
+        "dice": (0.5, 0.5, 0.5),
+        "pitcher": (0.7, 0.7, 0.7),
+        "rubrik": (0.8, 0.8, 0.8),
+    }
+    # ------------------------------------------
+
     def __post_init__(self):
         super().__post_init__()
 
-        # Set Cube as object
+        usd_path = ASSET_ROOT / f"{self.object_name}_goal.usd"
+        self.scene.goal_object = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/goal_object",
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.05, 0.825], rot=[1, 0, 0, 0]),
+            spawn=UsdFileCfg(
+                usd_path=str(usd_path),
+                scale=(0.8, 0.8, 0.8),
+                rigid_props=RigidBodyPropertiesCfg(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=1,
+                    max_angular_velocity=1000.0,
+                    max_linear_velocity=1000.0,
+                    max_depenetration_velocity=5.0,
+                    disable_gravity=True,
+                ),
+                collision_props=CollisionPropertiesCfg(collision_enabled=False),
+                visual_material=PreviewSurfaceCfg(diffuse_color=(0.45, 0.88, 0.67))
+            ),
+        )
+
+        # build the USD path for whichever object is requested
+        usd_path = ASSET_ROOT / f"{self.object_name}.usd"
+        if not usd_path.exists():
+            raise FileNotFoundError(f"Could not find asset: {usd_path}")
+
+        # ---------- object definition ----------
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.15, 0, 0.055], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=[0.15, 0.0, 0.055], rot=[1, 0, 0, 0]
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/ycb/banana.usd",
-                scale=(0.8, 0.8, 0.8),
+                usd_path=str(usd_path),
+                scale=self.object_scale.get(self.object_name, (1.0, 1.0, 1.0)),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
                     solver_velocity_iteration_count=1,
@@ -183,18 +222,14 @@ class RBY1TeleopLift(YCBLiftEnvCfg):
             asset_name="robot",
             joint_names=["gripper_finger_l1", "gripper_finger_l2"],
             open_command_expr={
-                "gripper_finger_l1": 0.0,     # left fully open (max)
-                "gripper_finger_l2": 0.0,     # right fully open (min)
+                "gripper_finger_l1": 0.0,
+                "gripper_finger_l2": 0.0,
             },
             close_command_expr={
-                "gripper_finger_l1": -0.05,   # left fully closed
-                "gripper_finger_l2": 0.05,   # right fully closed
+                "gripper_finger_l1": -0.05,
+                "gripper_finger_l2": 0.05,
             },
         )
-    
-        # End effector name
-        # self.commands.object_pose.body_name = "ee_left"
-
 
         # here I will be specifying the ee_frame position
         # Listens to the required transforms
@@ -215,3 +250,38 @@ class RBY1TeleopLift(YCBLiftEnvCfg):
                 ),
             ],
         )
+
+
+@configclass
+class RBY1TeleopLiftBanana(RBY1TeleopLift):
+    object_name: str = "banana"
+
+
+@configclass
+class RBY1TeleopLiftCup(RBY1TeleopLift):
+    object_name: str = "cup"
+
+
+@configclass
+class RBY1TeleopLiftBlock(RBY1TeleopLift):
+    object_name: str = "block"
+
+
+@configclass
+class RBY1TeleopLiftBottle(RBY1TeleopLift):
+    object_name: str = "bottle"
+
+
+@configclass
+class RBY1TeleopLiftDice(RBY1TeleopLift):
+    object_name: str = "dice"
+
+
+@configclass
+class RBY1TeleopLiftPitcher(RBY1TeleopLift):
+    object_name: str = "pitcher"
+
+
+@configclass
+class RBY1TeleopLiftRubrik(RBY1TeleopLift):
+    object_name: str = "rubrik"

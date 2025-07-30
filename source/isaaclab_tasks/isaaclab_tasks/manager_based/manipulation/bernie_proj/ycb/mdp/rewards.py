@@ -134,3 +134,28 @@ def object_goal_distance_xy_no_lift(
     # print("Rewards: ", (1 - torch.tanh(object_ee_distance / std)))
 
     return 1 - torch.tanh(object_ee_distance / std)
+
+
+# just to get the right z distance
+def object_goal_distance_z(
+    env: ManagerBasedRLEnv,
+    std: float,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    goal_object_cfg: SceneEntityCfg = SceneEntityCfg("goal_object"),
+) -> torch.Tensor:
+    """Z‑axis tracking reward between two scene objects (no XY term).
+
+    Returns 1 − tanh(|z_obj − z_goal| / std), which is:
+        • ≈1 when the two Z positions are equal,
+        • smoothly decreases as the vertical distance grows.
+    """
+    obj: RigidObject = env.scene[object_cfg.name]
+    goal: RigidObject = env.scene[goal_object_cfg.name]
+
+    # extract Z coordinates (N, )
+    obj_z = obj.data.root_pos_w[:, 2]
+    goal_z = goal.data.root_pos_w[:, 2]
+
+    z_dist = torch.abs(goal_z - obj_z)
+
+    return 1.0 - torch.tanh(z_dist / std)
