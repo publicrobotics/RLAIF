@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from dataclasses import MISSING
-
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg, DeformableObjectCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
@@ -24,11 +23,10 @@ import os
 import pathlib
 workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
+
 ##
 # Scene definition
 ##
-
-
 @configclass
 class YCBPickAndPlaceSceneCfg(InteractiveSceneCfg):
     """Configuration for the lift scene with a robot and a object.
@@ -49,9 +47,10 @@ class YCBPickAndPlaceSceneCfg(InteractiveSceneCfg):
 
     ee_frame: FrameTransformerCfg = MISSING
 
-    box: RigidObjectCfg | DeformableObjectCfg = MISSING
+    # Goal box to put YCB object into
+    goal_object: RigidObjectCfg | DeformableObjectCfg = MISSING
 
-    # target object: will be populated by agent env cfg
+    # YCB object to put into box
     object: RigidObjectCfg | DeformableObjectCfg = MISSING
 
     # Table
@@ -109,6 +108,10 @@ class ObservationsCfg:
         object_pos = ObsTerm(func=mdp.root_pos_w_object)
         object_quat = ObsTerm(func=mdp.root_quat_w_object)
 
+        # goal objects pose
+        goal_object_pos = ObsTerm(func=mdp.root_pos_w_goal_object)
+        goal_object_quat = ObsTerm(func=mdp.root_quat_w_goal_object)
+
         # robot pose
         robot_pos = ObsTerm(func=mdp.root_pos_w)
         robot_quat = ObsTerm(func=mdp.root_quat_w)
@@ -125,9 +128,11 @@ class ObservationsCfg:
 class EventCfg:
     """Configuration for events."""
 
+    # reset scene assets
+    reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
+
     """
-    this is to reset all of the objects to
-    their original state
+    reset robot in scene
     """
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
@@ -135,9 +140,7 @@ class EventCfg:
         params={"pose_range": {}, "velocity_range": {}},
     )
 
-    # start up positin for the robot
-
-    # start and reset position for the pot
+    # reset YCB object position
     reset_object = EventTerm(
         func=mdp.reset_root_state_uniform,
         mode="reset",
@@ -153,6 +156,7 @@ class EventCfg:
         },
     )
 
+    # reset goal (box) position
     reset_box = EventTerm(
         func=mdp.reset_root_state_uniform,
         mode="reset",
@@ -172,8 +176,7 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    # TODO: This will be LLM generated
-    # action_l2 = RewTerm(func=mdp.action_l2, weight=-0.01)
+    # TODO: This will utilize the policies generated from lift and push
     pass
 
 

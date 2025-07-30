@@ -1,13 +1,24 @@
-from isaaclab.utils import configclass
-
 # Copyright (c) 2022-2024, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
+from isaaclab.utils import configclass
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.utils import configclass
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb import mdp
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
+from isaaclab.sim.spawners.from_files import UsdFileCfg
+from isaaclab.utils import configclass
+from isaaclab.assets import ArticulationCfg
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, CollisionPropertiesCfg
+from isaaclab.sim.spawners.materials import PreviewSurfaceCfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_push_env_cfg import YCBPushEnvCfg
+import os
+import pathlib
+workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
 # for ee_Frame
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
@@ -17,41 +28,33 @@ FRAME_MARKER_SMALL_CFG = FRAME_MARKER_CFG.copy()
 # Pre-defined configs
 ##
 from isaaclab.envs.mdp.actions import DifferentialInverseKinematicsActionCfg, DifferentialIKControllerCfg
-
-##
-# Pre-defined configs
-##
-
 from isaaclab.assets import (
     RigidObjectCfg,
 )
-from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg
-from isaaclab.sim.spawners.from_files import UsdFileCfg
-
-
-from isaaclab.utils import configclass
-from isaaclab.assets import ArticulationCfg
-import isaaclab.sim as sim_utils
-from isaaclab.actuators import ImplicitActuatorCfg
-from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, CollisionPropertiesCfg
-from isaaclab.sim.spawners.materials import PreviewSurfaceCfg
-from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_push_env_cfg import YCBPushEnvCfg
-
-import os
-import pathlib
-workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
 
 @configclass
-class RBY1TeleopPush(YCBPushEnvCfg):
+class _RBY1TeleopPushBase(YCBPushEnvCfg):
+    """Common push‑task config; subclasses set `OBJ_NAME` at class level."""
+    # subclasses override this:
+    OBJ_NAME: str = "banana"
+    ASSET_DIR = "/home/davin123/PoliGen/assets/ycb"
+
     def __post_init__(self):
         super().__post_init__()
 
+        obj = self.OBJ_NAME
+        obj_usd = f"{self.ASSET_DIR}/{obj}.usd"
+        goal_usd = f"{self.ASSET_DIR}/{obj}_goal.usd"
+
+        # ─── Goal object ────────────────────────────────────────────────────────
         self.scene.goal_object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/goal_object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.05, 0.825], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=[0.35, 0.05, 0.825], rot=[1, 0, 0, 0]
+            ),
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/ycb/banana_goal.usd",
+                usd_path=goal_usd,
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -62,18 +65,19 @@ class RBY1TeleopPush(YCBPushEnvCfg):
                     disable_gravity=True,
                 ),
                 collision_props=CollisionPropertiesCfg(collision_enabled=False),
-                visual_material=PreviewSurfaceCfg(diffuse_color=(0.45, 0.88, 0.67))
+                visual_material=PreviewSurfaceCfg(diffuse_color=(0.45, 0.88, 0.67)),
             ),
         )
 
-        # instead of having an init position, having a start up position might be best
-        # Set Cube as object
+        # ─── Movable object ─────────────────────────────────────────────────────
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.35, 0.825], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(
+                pos=[0.35, 0.35, 0.825], rot=[1, 0, 0, 0]
+            ),
             debug_vis=True,
             spawn=UsdFileCfg(
-                usd_path="/home/davin123/PoliGen/assets/ycb/banana.usd",
+                usd_path=obj_usd,
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -238,3 +242,43 @@ class RBY1TeleopPush(YCBPushEnvCfg):
                 ),
             ],
         )
+
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Concrete classes: one per YCB object
+# Only the OBJ_NAME field changes, everything else is inherited
+# ────────────────────────────────────────────────────────────────────────────────
+
+@configclass
+class RBY1TeleopPushBanana(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "banana"
+
+
+@configclass
+class RBY1TeleopPushCup(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "cup"
+
+
+@configclass
+class RBY1TeleopPushRubrik(_RBY1TeleopPushBase):   # “rubrik” as provided
+    OBJ_NAME: str = "rubrik"
+
+
+@configclass
+class RBY1TeleopPushPitcher(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "pitcher"
+
+
+@configclass
+class RBY1TeleopPushBlock(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "block"
+
+
+@configclass
+class RBY1TeleopPushDice(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "dice"
+
+
+@configclass
+class RBY1TeleopPushBottle(_RBY1TeleopPushBase):
+    OBJ_NAME: str = "bottle"

@@ -3,7 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-
 from isaaclab.utils import configclass
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.ycb_pick_and_place_env_cfg import YCBPickAndPlaceEnvCfg
 from isaaclab.assets import ArticulationCfg
@@ -12,7 +11,6 @@ from isaaclab.actuators import ImplicitActuatorCfg
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb import mdp
-
 import os
 import pathlib
 workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
@@ -21,10 +19,6 @@ workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 # Pre-defined configs
 ##
 from isaaclab.markers.config import FRAME_MARKER_CFG  # isort: skip
-
-##
-# Pre-defined configs
-##
 from isaaclab.envs.mdp.actions import DifferentialInverseKinematicsActionCfg, DifferentialIKControllerCfg
 
 
@@ -34,7 +28,7 @@ class JointPickAndPlaceEnvCfg(YCBPickAndPlaceEnvCfg):
         # post init of parent
         super().__post_init__()
 
-        # Set Franka as robot
+        # Set RBY1 as robot
         self.scene.robot = ArticulationCfg(
             prim_path="{ENV_REGEX_NS}/Robot",
             spawn=sim_utils.UsdFileCfg(
@@ -140,7 +134,7 @@ class JointPickAndPlaceEnvCfg(YCBPickAndPlaceEnvCfg):
             soft_joint_pos_limit_factor=1.0,
         )
 
-        # Kinova Arm Actions
+        # RBY1 Arm Actions
         self.actions.arm_action = DifferentialInverseKinematicsActionCfg(
             asset_name="robot",
             joint_names=["left_arm_[0-6]"],
@@ -154,12 +148,12 @@ class JointPickAndPlaceEnvCfg(YCBPickAndPlaceEnvCfg):
             asset_name="robot",
             joint_names=["gripper_finger_l1", "gripper_finger_l2"],
             open_command_expr={
-                "gripper_finger_l1": 0.0,     # left fully open (max)
-                "gripper_finger_l2": 0.0,     # right fully open (min)
+                "gripper_finger_l1": 0.0,
+                "gripper_finger_l2": 0.0,
             },
             close_command_expr={
-                "gripper_finger_l1": -0.05,   # left fully closed
-                "gripper_finger_l2": 0.05,   # right fully closed
+                "gripper_finger_l1": -0.05,
+                "gripper_finger_l2": 0.05,
             },
         )
 

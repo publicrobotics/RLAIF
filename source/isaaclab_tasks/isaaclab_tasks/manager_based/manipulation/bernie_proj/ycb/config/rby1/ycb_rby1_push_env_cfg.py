@@ -12,11 +12,7 @@ workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 @configclass
 class YCBRBY1PushEnvCfg(JointPushEnvCfg):
     """
-    Class Description: This is class that all of our enviornments will extend
-                         - it enables a user to specify the start and goal object
-                           that a user wants to use for a task
-                       This class itself extends FrankaYCBEnvCfg
-                         - this class sets up the enviornment
+    Class Description: Base class for YCB Push tasks
     """
     def __init__(self, object_name: str, scale=(1.0, 1.0, 1.0)):
         """
@@ -30,11 +26,13 @@ class YCBRBY1PushEnvCfg(JointPushEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+
+        # Set Goal object
         self.scene.goal_object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/goal_object",
             init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.15, 0.825], rot=[1, 0, 0, 0]),
             spawn=UsdFileCfg(
-                usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + ".usd",
+                usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + "_goal.usd",
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -49,10 +47,10 @@ class YCBRBY1PushEnvCfg(JointPushEnvCfg):
             ),
         )
 
-        # Set Cube as object
+        # Set YCB object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.15, 0, 0.055], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.35, 0.825], rot=[1, 0, 0, 0]),
             spawn=UsdFileCfg(
                 usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + ".usd",
                 scale=(0.8, 0.8, 0.8),
@@ -71,17 +69,10 @@ class YCBRBY1PushEnvCfg(JointPushEnvCfg):
 """
 Description: Below are all of the classes
 that represent all of the enviornments that
-we will be working with.
-
-Enviornment structure:
-- Robot: Panda Franka
-- Object
-- Goal State
-- Table: where actions
-         will take place
+we will be working with:
+- banana, block, bottle, cup, dice, pitcher, rubrik
 """
 
-# banana, block, bottle, cup, dice, pitcher, rubrik
 
 @configclass
 class RBY1YCBPushBananaEnvCfg(YCBRBY1PushEnvCfg):
