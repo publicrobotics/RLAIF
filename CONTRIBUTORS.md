@@ -114,6 +114,7 @@ Guidelines for modifications:
 * Ryley McCarroll
 * Shafeef Omar
 * Shaoshu Su
+* Shaurya Dewan
 * Shundo Kishi
 * Stefan Van de Mosselaer
 * Stephan Pleines
@@ -126,6 +127,7 @@ Guidelines for modifications:
 * Yang Jin
 * Yanzi Zhu
 * Yijie Guo
+* Yohan Choi
 * Yujian Zhang
 * Yun Liu
 * Ziqi Fan
