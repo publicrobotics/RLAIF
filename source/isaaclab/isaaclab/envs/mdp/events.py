@@ -906,6 +906,168 @@ def reset_root_state_uniform(
     asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
 
 
+class reset_object_state_uniform(ManagerTermBase):
+    """
+    A class that resets an asset's state using pre-collected binned data.
+    
+    It loads a big array of data (with each row containing the original 7D state plus a bin number)
+    and a bin-index mapping (indicating the starting index and count for each bin) once from an HDF5 file.
+    Then, on each call, it randomly selects a bin (uniformly among the nonempty ones) and then a random element
+    from that bin for each environment.
+    """
+    
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self.init_object_state = torch.zeros((env.num_envs, 7), device=env.device)
+    
+    def __call__(self, env: ManagerBasedEnv, env_ids: torch.Tensor, pose_range: dict[str, tuple[float, float]], velocity_range: dict[str, tuple[float, float]]):
+        """
+        Reset the asset's state for all environments by:
+          - Sampling one random element per environment from the cached binned data.
+          - Combining these samples with other simulation parameters (like env origins and velocities)
+            to set new positions and orientations in the simulation.
+        """
+        # extract the used quantities (to enable type-hinting)
+        asset: RigidObject | Articulation = env.scene["object"]
+        # get default root state
+        root_states = asset.data.default_root_state[env_ids].clone()
+
+        # poses
+        range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
+        ranges = torch.tensor(range_list, device=asset.device)
+        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=asset.device)
+
+        positions = root_states[:, 0:3] + env.scene.env_origins[env_ids] + rand_samples[:, 0:3]
+        orientations_delta = math_utils.quat_from_euler_xyz(rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5])
+        orientations = math_utils.quat_mul(root_states[:, 3:7], orientations_delta)
+
+        # here you can set the poses
+        self.init_object_state[:, :3] = positions
+        self.init_object_state[:, 3:] = orientations
+
+        # velocities
+        range_list = [velocity_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
+        ranges = torch.tensor(range_list, device=asset.device)
+        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=asset.device)
+
+        velocities = root_states[:, 7:13] + rand_samples
+
+        # set into the physics simulation
+        asset.write_root_pose_to_sim(torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
+        asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
+
+
+class reset_object_state_goal_state_uniform(ManagerTermBase):
+    """
+    A class that resets an asset's state using pre-collected binned data.
+    
+    It loads a big array of data (with each row containing the original 7D state plus a bin number)
+    and a bin-index mapping (indicating the starting index and count for each bin) once from an HDF5 file.
+    Then, on each call, it randomly selects a bin (uniformly among the nonempty ones) and then a random element
+    from that bin for each environment.
+    """
+    
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        self.init_object_state = torch.zeros((env.num_envs, 7), device=env.device)
+    
+    def __call__(self, env: ManagerBasedEnv, env_ids: torch.Tensor, pose_range: dict[str, tuple[float, float]], velocity_range: dict[str, tuple[float, float]], lift_range: tuple[float, float] = (0.30, 0.50), object_cfg: SceneEntityCfg = SceneEntityCfg("object"), goal_object_cfg: SceneEntityCfg = SceneEntityCfg("goal_object")):
+        """
+        • Random‑reset the *object* root pose & velocity uniformly within `pose_range` / `velocity_range`.
+        • Place *goal_object* directly above *object*, lifted by a random z‑offset in `lift_range`.
+        (Orientation is copied; velocity is set to zero.)
+
+        Parameters
+        ----------
+        env : ManagerBasedEnv
+            The environment that owns the scene.
+        env_ids : torch.Tensor
+            1‑D tensor of environment indices to reset.
+        pose_range : dict
+            Keys: "x","y","z","roll","pitch","yaw"  →  (min,max) tuples (missing keys default to 0).
+        velocity_range : dict
+            Same keys as `pose_range`; ranges for linear & angular velocity (vx,vy,vz,wx,wy,wz).
+        lift_range : (float, float)
+            Min/max height (metres) to lift the goal object above the object.
+        object_cfg : SceneEntityCfg
+            Config identifying the primary object in the scene.
+        goal_object_cfg : SceneEntityCfg
+            Config identifying the goal object to place above the primary object.
+        """
+        # ------------------------------------------------------------------
+        # 1) randomize OBJECT root pose & velocity
+        # ------------------------------------------------------------------
+        obj: RigidObject | Articulation = env.scene[object_cfg.name]
+        device = obj.device
+
+        # default root state for the chosen env_ids
+        root_states = obj.data.default_root_state[env_ids].clone()
+
+        # --- sample pose offsets (pos + orientation) ----------------------
+        pose_keys = ["x", "y", "z", "roll", "pitch", "yaw"]
+        pose_ranges = torch.tensor(
+            [pose_range.get(k, (0.0, 0.0)) for k in pose_keys], device=device
+        )
+        pose_rand = math_utils.sample_uniform(
+            pose_ranges[:, 0], pose_ranges[:, 1], (len(env_ids), 6), device=device
+        )
+
+        # position
+        positions = (
+            root_states[:, 0:3]
+            + env.scene.env_origins[env_ids]          # per‑env world origin
+            + pose_rand[:, 0:3]                       # sampled xyz offsets
+        )
+
+        # orientation
+        ori_delta = math_utils.quat_from_euler_xyz(
+            pose_rand[:, 3], pose_rand[:, 4], pose_rand[:, 5]
+        )
+        orientations = math_utils.quat_mul(root_states[:, 3:7], ori_delta)
+
+        # here you need to set the position and the orientation here
+        # here you can set the poses
+        self.init_object_state[env_ids, :3] = positions
+        self.init_object_state[env_ids, 3:] = orientations
+
+        # --- sample velocities -------------------------------------------
+        vel_keys = ["x", "y", "z", "roll", "pitch", "yaw"]
+        vel_ranges = torch.tensor(
+            [velocity_range.get(k, (0.0, 0.0)) for k in vel_keys], device=device
+        )
+        vel_rand = math_utils.sample_uniform(
+            vel_ranges[:, 0], vel_ranges[:, 1], (len(env_ids), 6), device=device
+        )
+        velocities = root_states[:, 7:13] + vel_rand
+
+        # --- write object root state to sim ------------------------------
+        obj.write_root_pose_to_sim(torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
+        obj.write_root_velocity_to_sim(velocities, env_ids=env_ids)
+
+        # ------------------------------------------------------------------
+        # 2) position GOAL_OBJECT above the object
+        # ------------------------------------------------------------------
+        goal: RigidObject | Articulation = env.scene[goal_object_cfg.name]
+
+        # lift sampled per environment
+        lift_samples = math_utils.sample_uniform(
+            torch.tensor(lift_range[0], device=device),
+            torch.tensor(lift_range[1], device=device),
+            (len(env_ids),),
+            device=device,
+        ).unsqueeze(-1)  # shape (N, 1)
+
+        goal_positions = positions + torch.tensor([0.0, 0.0, 1.0], device=device) * lift_samples
+        goal_orientations = orientations.clone()
+
+        # zero velocity for goal object
+        goal_velocities = torch.zeros((len(env_ids), 6), device=device)
+
+        # --- write goal_object root state to sim -------------------------
+        goal.write_root_pose_to_sim(torch.cat([goal_positions, goal_orientations], dim=-1), env_ids=env_ids)
+        goal.write_root_velocity_to_sim(goal_velocities, env_ids=env_ids)
+
+
 def reset_start_goal_state_uniform(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
