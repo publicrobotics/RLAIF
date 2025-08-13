@@ -144,7 +144,7 @@ class EventCfg:
     reset YCB object in given scene
     """
     reset_object = EventTerm(
-        func=mdp.reset_root_state_uniform,
+        func=mdp.reset_object_state_uniform,
         mode="reset",
         params={
             "pose_range":
@@ -181,19 +181,21 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
     
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=5.0)
 
-    object_goal_tracking = RewTerm(
-        func=mdp.object_goal_distance_xy_no_lift,
-        params={"std": 0.5},
-        weight=16.0,
-    )
+    lifting_object = RewTerm(func=mdp.object_is_lifted_push_task, params={"minimal_height": 0.1}, weight=10.0)
 
-    object_goal_tracking_fine_grained = RewTerm(
-        func=mdp.object_goal_distance_xy_no_lift,
-        params={"std": 0.1},
-        weight=5.0,
-    )
+    # object_goal_tracking = RewTerm(
+    #     func=mdp.object_goal_distance_xy_no_lift,
+    #     params={"std": 0.3},
+    #     weight=16.0,
+    # )
+
+    # object_goal_tracking_fine_grained = RewTerm(
+    #     func=mdp.object_goal_distance_xy_no_lift,
+    #     params={"std": 0.05},
+    #     weight=5.0,
+    # )
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
@@ -243,3 +245,4 @@ class YCBPushEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 1024 * 1024 * 4
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 100000
