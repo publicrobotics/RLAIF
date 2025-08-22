@@ -1075,7 +1075,7 @@ def reset_start_goal_state_uniform(
     env_ids: torch.Tensor,
     pose_range: dict[str, tuple[float, float]],
     velocity_range: dict[str, tuple[float, float]],
-    lift_range: tuple[float, float] = (0.30, 0.50),
+    lift_range: tuple[float, float] = (0.10, 0.20),
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
     goal_object_cfg: SceneEntityCfg = SceneEntityCfg("goal_object"),
 ):

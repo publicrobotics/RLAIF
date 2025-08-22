@@ -76,6 +76,12 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
+# adding in nessecary imports
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config, ycb_rby1_lift_env_cfg, ycb_rby1_pick_and_place_env_cfg, ycb_rby1_push_env_cfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
+
 
 @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
