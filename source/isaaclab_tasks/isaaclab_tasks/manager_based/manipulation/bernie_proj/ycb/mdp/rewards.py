@@ -71,6 +71,8 @@ def object_height_shaped(
 
 
 # use this for push
+
+# no need to have the minimal distance be a thing
 def object_ee_distance(
     env: ManagerBasedRLEnv,
     std: float,
@@ -92,53 +94,81 @@ def object_ee_distance(
     return 1 - torch.tanh(object_ee_distance / std)
 
 
-# do one where you then go from object to object_pose (goal position)
+# # do one where you then go from object to object_pose (goal position)
+# # lift by some minimal height
+# def object_goal_distance(
+#     env: ManagerBasedRLEnv,
+#     std: float,
+#     minimal_height: float,
+#     command_name: str,
+#     robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+#     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+# ) -> torch.Tensor:
+#     """Reward the agent for tracking the goal pose using tanh-kernel."""
+#     # extract the used quantities (to enable type-hinting)
+#     robot: RigidObject = env.scene[robot_cfg.name]
+#     object: RigidObject = env.scene[object_cfg.name]
+#     command = env.command_manager.get_command(command_name)
+#     # compute the desired position in the world frame
+#     des_pos_b = command[:, :3]
+#     des_pos_w, _ = combine_frame_transforms(robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], des_pos_b)
+#     # distance of the end-effector to the object: (num_envs,)
+#     distance = torch.norm(des_pos_w - object.data.root_pos_w[:, :3], dim=1)
 
-
-# lift by some minimal height
-def object_goal_distance(
-    env: ManagerBasedRLEnv,
-    std: float,
-    minimal_height: float,
-    command_name: str,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-) -> torch.Tensor:
-    """Reward the agent for tracking the goal pose using tanh-kernel."""
-    # extract the used quantities (to enable type-hinting)
-    robot: RigidObject = env.scene[robot_cfg.name]
-    object: RigidObject = env.scene[object_cfg.name]
-    command = env.command_manager.get_command(command_name)
-    # compute the desired position in the world frame
-    des_pos_b = command[:, :3]
-    des_pos_w, _ = combine_frame_transforms(robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], des_pos_b)
-    # distance of the end-effector to the object: (num_envs,)
-    distance = torch.norm(des_pos_w - object.data.root_pos_w[:, :3], dim=1)
-    # rewarded if the object is lifted above the threshold
-    return (object.data.root_pos_w[:, 2] > minimal_height) * (1 - torch.tanh(distance / std))
+#     # rewarded if the object is lifted above the threshold
+#     return (object.data.root_pos_w[:, 2] > minimal_height) * (1 - torch.tanh(distance / std))
 
 
 # torch.where((object.data.root_pos_w[:, 2] - env.event_manager.get_term_cfg("reset_object_state").func.init_object_state[:, 2]) > minimal_height, 1.0, 0.0)
+# def object_goal_distance(
+#     env: ManagerBasedRLEnv,
+#     std: float,
+#     minimal_height: float,
+#     command_name: str,
+#     robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+#     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+# ) -> torch.Tensor:
+#     """Reward the agent for tracking the goal pose using tanh-kernel."""
+#     # extract the used quantities (to enable type-hinting)
+#     robot: RigidObject = env.scene[robot_cfg.name]
+#     object: RigidObject = env.scene[object_cfg.name]
+#     command = env.command_manager.get_command(command_name)
+#     # compute the desired position in the world frame
+#     des_pos_b = command[:, :3]
+#     des_pos_w, _ = combine_frame_transforms(robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], des_pos_b)
+#     # distance of the end-effector to the object: (num_envs,)
+#     distance = torch.norm(des_pos_w - object.data.root_pos_w[:, :3], dim=1)
+#     # rewarded if the object is lifted above the threshold
+#     height = (object.data.root_pos_w[:, 2] - env.event_manager.get_term_cfg("reset_object_state").func.init_object_state[:, 2])
+#     return torch.where(height > minimal_height, 1.0, 0.0) * (1 - torch.tanh(distance / std))
+
+
 def object_goal_distance(
     env: ManagerBasedRLEnv,
     std: float,
     minimal_height: float,
-    command_name: str,
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    goal_object_cfg: SceneEntityCfg = SceneEntityCfg("goal_object"),
 ) -> torch.Tensor:
-    """Reward the agent for tracking the goal pose using tanh-kernel."""
-    # extract the used quantities (to enable type-hinting)
-    robot: RigidObject = env.scene[robot_cfg.name]
-    object: RigidObject = env.scene[object_cfg.name]
-    command = env.command_manager.get_command(command_name)
-    # compute the desired position in the world frame
-    des_pos_b = command[:, :3]
-    des_pos_w, _ = combine_frame_transforms(robot.data.root_state_w[:, :3], robot.data.root_state_w[:, 3:7], des_pos_b)
-    # distance of the end-effector to the object: (num_envs,)
-    distance = torch.norm(des_pos_w - object.data.root_pos_w[:, :3], dim=1)
-    # rewarded if the object is lifted above the threshold
-    return torch.where((object.data.root_pos_w[:, 2] - env.event_manager.get_term_cfg("reset_object_state").func.init_object_state[:, 2]) > minimal_height, 1.0, 0.0) * (1 - torch.tanh(distance / std))
+    """Reward the agent for bringing `object` to `goal_object` using a tanh-kernel.
+    
+    Reward = 1{object lifted above threshold} * (1 - tanh(||p_obj - p_goal|| / std))
+    """
+    # scene objects
+    obj: RigidObject = env.scene[object_cfg.name]
+    goal: RigidObject = env.scene[goal_object_cfg.name]
+
+    # Euclidean distance between object and goal_object (world frame)
+    distance = torch.norm(goal.data.root_pos_w[:, :3] - obj.data.root_pos_w[:, :3], dim=1)
+
+    # Lift gate: object must be above its initial height by minimal_height
+    init_z = env.event_manager.get_term_cfg("reset_object_state").func.init_object_state[:, 2]
+    height = obj.data.root_pos_w[:, 2] - init_z
+
+    # Tanh kernel (ensure std > 0)
+    pos_reward = 1.0 - torch.tanh(distance / std)
+    gate = (height > minimal_height).to(pos_reward.dtype)   # or .float()
+    return gate * pos_reward
 
 
 def object_goal_distance_xy_no_lift(

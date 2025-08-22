@@ -54,11 +54,13 @@ class YCBLiftSceneCfg(InteractiveSceneCfg):
 
     goal_object: RigidObjectCfg | DeformableObjectCfg = MISSING
 
+    # adjust the table placement
+
     # Table
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=[0.65, 0.0, 0.00], rot=[0, 0, 0, 1]),
-        spawn=UsdFileCfg(usd_path=str(workspace) + "/assets/table.usd"),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=[0.665, 0.5, 0.475], rot=[-0.7071, 0, 0, 0.7071]),
+        spawn=UsdFileCfg(usd_path=str(workspace) + "/assets/rlaif_table.usd", scale=(1.5, 1.5, 0.765),),
     )
 
     # lights
@@ -102,20 +104,17 @@ class ObservationsCfg:
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for the policy."""
-        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, scale=0.1)
-        actions = ObsTerm(func=mdp.last_action)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
 
         # objects pose
-        object_pos = ObsTerm(func=mdp.root_pos_w_object)
-        object_quat = ObsTerm(func=mdp.root_quat_w_object)
+        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
 
         # goal objects pose
-        goal_object_pos = ObsTerm(func=mdp.root_pos_w_goal_object)
-        goal_object_quat = ObsTerm(func=mdp.root_quat_w_goal_object)
+        goal_object_position = ObsTerm(func=mdp.goal_object_position_in_robot_root_frame)
 
-        # robot pose
-        robot_pos = ObsTerm(func=mdp.root_pos_w)
-        robot_quat = ObsTerm(func=mdp.root_quat_w)
+        actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -148,9 +147,9 @@ class EventCfg:
         params={
             "pose_range":
             {
-                "x": (0.10, 0.25),
-                "y": (0.30, 0.50),
-                "z": (0.80, 0.80),
+                "x": (0.000, 0.010),
+                "y": (0.35, 0.45),
+                "z": (0.546, 0.546),
             },
             "velocity_range": {},
         },
@@ -160,9 +159,9 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=25.0)
+    reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted_lift_task, params={"minimal_height": 0.1}, weight=10.0)
+    lifting_object = RewTerm(func=mdp.object_is_lifted_lift_task, params={"minimal_height": 0.04}, weight=100.0)
 
     # object_goal_tracking = RewTerm(
     #     func=mdp.object_goal_distance_z,

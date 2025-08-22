@@ -86,7 +86,7 @@ class RBY1TeleopLift(YCBLiftEnvCfg):
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
             init_state=RigidObjectCfg.InitialStateCfg(
-                pos=[0.15, 0.0, 0.055], rot=[1, 0, 0, 0]
+                pos=[0.10, 0.0, 0.055], rot=[1, 0, 0, 0]
             ),
             spawn=UsdFileCfg(
                 usd_path=str(usd_path),
@@ -118,7 +118,6 @@ class RBY1TeleopLift(YCBLiftEnvCfg):
                 copy_from_source=False,
             ),
             init_state=ArticulationCfg.InitialStateCfg(
-                pos=(0.0, 0.0, 0.1),
                 joint_pos={
                     "left_arm_0": 0.0,
                     "left_arm_1": 0.0,
