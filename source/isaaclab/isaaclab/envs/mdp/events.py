@@ -910,52 +910,145 @@ def reset_root_state_uniform(
 
 class reset_object_state_uniform(ManagerTermBase):
     """
-    A class that resets an asset's state using pre-collected binned data.
-    
-    It loads a big array of data (with each row containing the original 7D state plus a bin number)
-    and a bin-index mapping (indicating the starting index and count for each bin) once from an HDF5 file.
-    Then, on each call, it randomly selects a bin (uniformly among the nonempty ones) and then a random element
-    from that bin for each environment.
+    Reset only the requested environment IDs using uniform noise around default root state.
+    Caches the last reset pose per env in self.init_object_state[env_idx] = [pos(3), quat(4)].
     """
-    
+
     def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
         super().__init__(cfg, env)
-        self.init_object_state = torch.zeros((env.num_envs, 7), device=env.device)
-    
-    def __call__(self, env: ManagerBasedEnv, env_ids: torch.Tensor, pose_range: dict[str, tuple[float, float]], velocity_range: dict[str, tuple[float, float]]):
-        """
-        Reset the asset's state for all environments by:
-          - Sampling one random element per environment from the cached binned data.
-          - Combining these samples with other simulation parameters (like env origins and velocities)
-            to set new positions and orientations in the simulation.
-        """
-        # extract the used quantities (to enable type-hinting)
+        device = env.device
+        # cache last reset pose per env (pos[3] + quat[4])
+        self.init_object_state = torch.zeros((env.num_envs, 7), device=device, dtype=torch.float32)
+
+    @torch.no_grad()
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        env_ids: torch.Tensor,
+        pose_range: dict[str, tuple[float, float]],
+        velocity_range: dict[str, tuple[float, float]],
+    ):
+        # early-out if nothing to reset
+        if env_ids is None or env_ids.numel() == 0:
+            return
+
+        # ensure proper indexing dtype/device
         asset: RigidObject | Articulation = env.scene["object"]
-        # get default root state
-        root_states = asset.data.default_root_state[env_ids].clone()
+        device = asset.data.default_root_state.device
+        env_ids = env_ids.to(device=device, dtype=torch.long)
 
-        # poses
-        range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
-        ranges = torch.tensor(range_list, device=asset.device)
-        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=asset.device)
+        # default root state for just these envs
+        root_states_def = asset.data.default_root_state[env_ids].clone()  # (N, 13)
+        N = env_ids.numel()
 
-        positions = root_states[:, 0:3] + env.scene.env_origins[env_ids] + rand_samples[:, 0:3]
-        orientations_delta = math_utils.quat_from_euler_xyz(rand_samples[:, 3], rand_samples[:, 4], rand_samples[:, 5])
-        orientations = math_utils.quat_mul(root_states[:, 3:7], orientations_delta)
+        # ----- Pose sampling -----
+        # ranges: [x, y, z, roll, pitch, yaw]
+        pose_ranges_list = [pose_range.get(k, (0.0, 0.0)) for k in ["x","y","z","roll","pitch","yaw"]]
+        pose_ranges = torch.as_tensor(pose_ranges_list, device=device, dtype=root_states_def.dtype)  # (6, 2)
+        rand_pose = math_utils.sample_uniform(
+            pose_ranges[:, 0], pose_ranges[:, 1], (N, 6), device=device
+        )  # (N, 6)
 
-        # here you can set the poses
-        self.init_object_state[:, :3] = positions
-        self.init_object_state[:, 3:] = orientations
+        # base pose = default + env_origin for these envs
+        positions = root_states_def[:, 0:3] + env.scene.env_origins[env_ids] + rand_pose[:, 0:3]  # (N, 3)
 
-        # velocities
-        range_list = [velocity_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
-        ranges = torch.tensor(range_list, device=asset.device)
-        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 6), device=asset.device)
+        # orientation delta from sampled euler noise
+        orientations_delta = math_utils.quat_from_euler_xyz(
+            rand_pose[:, 3], rand_pose[:, 4], rand_pose[:, 5]
+        )  # (N, 4)
+        orientations = math_utils.quat_mul(root_states_def[:, 3:7], orientations_delta)  # (N, 4)
+        # (optional) normalize for safety
+        orientations = math_utils.normalize(orientations)
 
-        velocities = root_states[:, 7:13] + rand_samples
+        # ----- Cache only these envs -----
+        # write back into the per-env cache only at indices env_ids
+        self.init_object_state[env_ids, 0:3] = positions
+        self.init_object_state[env_ids, 3:7] = orientations
 
-        # set into the physics simulation
-        asset.write_root_pose_to_sim(torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
+        # ----- Velocity sampling -----
+        vel_ranges_list = [velocity_range.get(k, (0.0, 0.0)) for k in ["x","y","z","roll","pitch","yaw"]]
+        vel_ranges = torch.as_tensor(vel_ranges_list, device=device, dtype=root_states_def.dtype)  # (6, 2)
+        rand_vel = math_utils.sample_uniform(
+            vel_ranges[:, 0], vel_ranges[:, 1], (N, 6), device=device
+        )  # (N, 6)
+
+        velocities = root_states_def[:, 7:13] + rand_vel  # (N, 6) = [lin(3), ang(3)]
+
+        # ----- Write to sim ONLY for env_ids -----
+        root_pose = torch.cat([positions, orientations], dim=-1)  # (N, 7)
+        asset.write_root_pose_to_sim(root_pose, env_ids=env_ids)
+        asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
+
+
+class reset_goal_object_state_uniform(ManagerTermBase):
+    """
+    Reset only the requested environment IDs using uniform noise around default root state.
+    Caches the last reset pose per env in self.init_object_state[env_idx] = [pos(3), quat(4)].
+    """
+
+    def __init__(self, cfg: EventTermCfg, env: ManagerBasedEnv):
+        super().__init__(cfg, env)
+        device = env.device
+        # cache last reset pose per env (pos[3] + quat[4])
+        self.init_object_state = torch.zeros((env.num_envs, 7), device=device, dtype=torch.float32)
+
+    @torch.no_grad()
+    def __call__(
+        self,
+        env: ManagerBasedEnv,
+        env_ids: torch.Tensor,
+        pose_range: dict[str, tuple[float, float]],
+        velocity_range: dict[str, tuple[float, float]],
+    ):
+        # early-out if nothing to reset
+        if env_ids is None or env_ids.numel() == 0:
+            return
+
+        # ensure proper indexing dtype/device
+        asset: RigidObject | Articulation = env.scene["goal_object"]
+        device = asset.data.default_root_state.device
+        env_ids = env_ids.to(device=device, dtype=torch.long)
+
+        # default root state for just these envs
+        root_states_def = asset.data.default_root_state[env_ids].clone()  # (N, 13)
+        N = env_ids.numel()
+
+        # ----- Pose sampling -----
+        # ranges: [x, y, z, roll, pitch, yaw]
+        pose_ranges_list = [pose_range.get(k, (0.0, 0.0)) for k in ["x","y","z","roll","pitch","yaw"]]
+        pose_ranges = torch.as_tensor(pose_ranges_list, device=device, dtype=root_states_def.dtype)  # (6, 2)
+        rand_pose = math_utils.sample_uniform(
+            pose_ranges[:, 0], pose_ranges[:, 1], (N, 6), device=device
+        )  # (N, 6)
+
+        # base pose = default + env_origin for these envs
+        positions = root_states_def[:, 0:3] + env.scene.env_origins[env_ids] + rand_pose[:, 0:3]  # (N, 3)
+
+        # orientation delta from sampled euler noise
+        orientations_delta = math_utils.quat_from_euler_xyz(
+            rand_pose[:, 3], rand_pose[:, 4], rand_pose[:, 5]
+        )  # (N, 4)
+        orientations = math_utils.quat_mul(root_states_def[:, 3:7], orientations_delta)  # (N, 4)
+        # (optional) normalize for safety
+        orientations = math_utils.normalize(orientations)
+
+        # ----- Cache only these envs -----
+        # write back into the per-env cache only at indices env_ids
+        self.init_object_state[env_ids, 0:3] = positions
+        self.init_object_state[env_ids, 3:7] = orientations
+
+        # ----- Velocity sampling -----
+        vel_ranges_list = [velocity_range.get(k, (0.0, 0.0)) for k in ["x","y","z","roll","pitch","yaw"]]
+        vel_ranges = torch.as_tensor(vel_ranges_list, device=device, dtype=root_states_def.dtype)  # (6, 2)
+        rand_vel = math_utils.sample_uniform(
+            vel_ranges[:, 0], vel_ranges[:, 1], (N, 6), device=device
+        )  # (N, 6)
+
+        velocities = root_states_def[:, 7:13] + rand_vel  # (N, 6) = [lin(3), ang(3)]
+
+        # ----- Write to sim ONLY for env_ids -----
+        root_pose = torch.cat([positions, orientations], dim=-1)  # (N, 7)
+        asset.write_root_pose_to_sim(root_pose, env_ids=env_ids)
         asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
 
 
@@ -1064,6 +1157,9 @@ class reset_object_state_goal_state_uniform(ManagerTermBase):
 
         # zero velocity for goal object
         goal_velocities = torch.zeros((len(env_ids), 6), device=device)
+
+        # print("POSITON: ", positions)
+        # print("GOAL POSITION: ", goal_positions)
 
         # --- write goal_object root state to sim -------------------------
         goal.write_root_pose_to_sim(torch.cat([goal_positions, goal_orientations], dim=-1), env_ids=env_ids)

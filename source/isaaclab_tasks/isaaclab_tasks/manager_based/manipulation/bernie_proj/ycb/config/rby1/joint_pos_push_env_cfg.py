@@ -46,13 +46,20 @@ class JointPushEnvCfg(YCBPushEnvCfg):
             ),
             init_state=ArticulationCfg.InitialStateCfg(
                 joint_pos={
-                    "left_arm_0": 0.0,
+
+                    # this will be for the 1st main joint
+                    "left_arm_0": -0.40,
                     "left_arm_1": 0.0,
                     "left_arm_2": 0.0,
-                    "left_arm_3": 0.0,
+
+                    # this will be for the 2nd main joint
+                    "left_arm_3": -0.5,
+
+                    # this will be for the 3rd main joint
                     "left_arm_4": 0.0,
-                    "left_arm_5": 0.0,
+                    "left_arm_5": 0.90,
                     "left_arm_6": 0.0,
+
                     "right_arm_0": 0.0,
                     "right_arm_1": 0.0,
                     "right_arm_2": 0.0,
@@ -79,29 +86,29 @@ class JointPushEnvCfg(YCBPushEnvCfg):
                     joint_names_expr=["left_arm_[0-6]"],
                     effort_limit_sim=87.0,
                     velocity_limit_sim=2.175,
-                    stiffness=80.0,
-                    damping=4.0,
+                    stiffness=1000.0,
+                    damping=250.0,
                 ),
                 "rby1_rightarm": ImplicitActuatorCfg(
                     joint_names_expr=["right_arm_[0-6]"],
                     effort_limit_sim=87.0,
                     velocity_limit_sim=2.175,
-                    stiffness=80.0,
-                    damping=4.0,
+                    stiffness=400.0,
+                    damping=100.0,
                 ),
                 "rby1_leftgripper": ImplicitActuatorCfg(
                     joint_names_expr=["gripper_finger_l.*"],
                     effort_limit_sim=200.0,
                     velocity_limit_sim=0.2,
-                    stiffness=2e3,
-                    damping=1e2,
+                    stiffness=4e3,
+                    damping=2e2,
                 ),
                 "rby1_rightgripper": ImplicitActuatorCfg(
                     joint_names_expr=["gripper_finger_r.*"],
                     effort_limit_sim=200.0,
                     velocity_limit_sim=0.2,
-                    stiffness=2e3,
-                    damping=1e2,
+                    stiffness=4e3,
+                    damping=2e2,
                 ),
                 "rby1_torso": ImplicitActuatorCfg(
                     joint_names_expr=["torso_[0-5]"],
@@ -140,20 +147,20 @@ class JointPushEnvCfg(YCBPushEnvCfg):
             joint_names=["left_arm_[0-6]"],
             body_name="link_left_arm_6",
             controller=DifferentialIKControllerCfg(command_type="pose", use_relative_mode=True, ik_method="dls"),
-            scale=0.5,
-            body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.107]),
+            scale=0.25,
+            body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, -0.275]),
         )
 
         self.actions.gripper_action = mdp.BinaryJointPositionActionCfg(
             asset_name="robot",
             joint_names=["gripper_finger_l1", "gripper_finger_l2"],
             open_command_expr={
-                "gripper_finger_l1": 0.0,     # left fully open (max)
-                "gripper_finger_l2": 0.0,     # right fully open (min)
+                "gripper_finger_l1": 0.0,
+                "gripper_finger_l2": 0.0,
             },
             close_command_expr={
-                "gripper_finger_l1": -0.05,   # left fully closed
-                "gripper_finger_l2": 0.05,   # right fully closed
+                "gripper_finger_l1": -0.025,
+                "gripper_finger_l2": 0.025,
             },
         )
 
@@ -164,7 +171,7 @@ class JointPushEnvCfg(YCBPushEnvCfg):
         marker_cfg.prim_path = "/Visuals/FrameTransformer"
         self.scene.ee_frame = FrameTransformerCfg(
             prim_path="{ENV_REGEX_NS}/Robot/link_left_arm_0",
-            debug_vis=True,
+            debug_vis=False,
             visualizer_cfg=marker_cfg,
             target_frames=[
                 FrameTransformerCfg.FrameCfg(

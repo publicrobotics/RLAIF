@@ -32,7 +32,7 @@ class YCBRBY1PushEnvCfg(JointPushEnvCfg):
             prim_path="{ENV_REGEX_NS}/goal_object",
             init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.15, 0.825], rot=[1, 0, 0, 0]),
             spawn=UsdFileCfg(
-                usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + "_goal.usd",
+                usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + ".usd",
                 scale=(0.8, 0.8, 0.8),
                 rigid_props=RigidBodyPropertiesCfg(
                     solver_position_iteration_count=16,
@@ -43,14 +43,14 @@ class YCBRBY1PushEnvCfg(JointPushEnvCfg):
                     disable_gravity=True,
                 ),
                 collision_props=CollisionPropertiesCfg(collision_enabled=False),
-                visual_material=PreviewSurfaceCfg(diffuse_color=(0.65, 0.88, 0.67))
+                visual_material=PreviewSurfaceCfg(diffuse_color=(0.565, 0.933, 0.565))
             ),
         )
 
         # Set YCB object
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.35, 0.35, 0.825], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.15, 0, 0.055], rot=[1, 0, 0, 0]),
             spawn=UsdFileCfg(
                 usd_path=str(workspace) + str("/assets/ycb/") + str(self.object_name) + ".usd",
                 scale=(0.8, 0.8, 0.8),
