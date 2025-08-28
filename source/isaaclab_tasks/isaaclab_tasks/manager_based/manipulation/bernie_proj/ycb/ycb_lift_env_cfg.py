@@ -22,6 +22,7 @@ from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb import mdp
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 import os
 import pathlib
+from isaaclab.managers import CurriculumTermCfg as CurrTerm
 workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
 ##
@@ -59,8 +60,8 @@ class YCBLiftSceneCfg(InteractiveSceneCfg):
     # Table
     table = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Table",
-        init_state=AssetBaseCfg.InitialStateCfg(pos=[0.665, 0.5, 0.475], rot=[-0.7071, 0, 0, 0.7071]),
-        spawn=UsdFileCfg(usd_path=str(workspace) + "/assets/rlaif_table.usd", scale=(1.5, 1.5, 0.765),),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=[0.665, 0.5, 0.600], rot=[-0.7071, 0, 0, 0.7071]),
+        spawn=UsdFileCfg(usd_path=str(workspace) + "/assets/rlaif_table.usd", scale=(1.5, 1.5, 0.85),),
     )
 
     # lights
@@ -106,7 +107,6 @@ class ObservationsCfg:
         """Observations for the policy."""
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
-        object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
 
         # objects pose
         object_position = ObsTerm(func=mdp.object_position_in_robot_root_frame)
@@ -114,10 +114,14 @@ class ObservationsCfg:
         # goal objects pose
         goal_object_position = ObsTerm(func=mdp.goal_object_position_in_robot_root_frame)
 
+        # quat information
+        # object_quat = ObsTerm(func=mdp.object_quat_in_world_frame)
+        # goal_object_quat = ObsTerm(func=mdp.goal_object_quat_in_world_frame)
+
         actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
-            self.enable_corruption = False
+            self.enable_corruption = True
             self.concatenate_terms = True
 
     # observation groups
@@ -131,15 +135,6 @@ class EventCfg:
     # reset scene assets
     reset_all = EventTerm(func=mdp.reset_scene_to_default, mode="reset")
 
-    """
-    reset robot state
-    """
-    reset_base = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={"pose_range": {}, "velocity_range": {}},
-    )
-
     # reset start and goal state positions
     reset_objects = EventTerm(
         func=mdp.reset_object_state_goal_state_uniform,
@@ -147,13 +142,31 @@ class EventCfg:
         params={
             "pose_range":
             {
-                "x": (0.000, 0.010),
-                "y": (0.35, 0.45),
-                "z": (0.546, 0.546),
+                "x": (0.150, 0.250),
+                "y": (0.150, 0.250),
+                "z": (0.610, 0.610),
             },
             "velocity_range": {},
         },
     )
+
+    # reset_goal_object = EventTerm(
+    #     func=mdp.reset_goal_object_state_uniform,
+    #     mode="reset",
+    #     params={
+    #         "pose_range":
+    #         {
+    #             "x": (0.200, 0.200),
+    #             "y": (0.200, 0.200),
+    #             "z": (0.610, 0.610),
+    #         },
+    #         "velocity_range": {},
+    #     },
+    # )
+
+    # "x": (0.150, 0.250),
+    # "y": (0.150, 0.250),
+    # "z": (0.610, 0.610),
 
 
 @configclass
@@ -161,19 +174,19 @@ class RewardsCfg:
     """Reward terms for the MDP."""
     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted_lift_task, params={"minimal_height": 0.04}, weight=100.0)
+    lifting_object = RewTerm(func=mdp.object_is_lifted_lift_task, params={"minimal_height": 0.04}, weight=15.0)
 
-    # object_goal_tracking = RewTerm(
-    #     func=mdp.object_goal_distance_z,
-    #     params={"std": 0.3},
-    #     weight=16.0,
-    # )
+    object_goal_tracking = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.3, "minimal_height": 0.04},
+        weight=16.0,
+    )
 
-    # object_goal_tracking_fine_grained = RewTerm(
-    #     func=mdp.object_goal_distance_z,
-    #     params={"std": 0.05},
-    #     weight=5.0,
-    # )
+    object_goal_tracking_fine_grained = RewTerm(
+        func=mdp.object_goal_distance,
+        params={"std": 0.05, "minimal_height": 0.04},
+        weight=5.0,
+    )
 
     # action penalty
     action_rate = RewTerm(func=mdp.action_rate_l2, weight=-1e-4)
@@ -190,6 +203,24 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
+    # object_dropping = DoneTerm(
+    #     func=mdp.root_height_below_minimum, params={"minimum_height": -0.05, "asset_cfg": SceneEntityCfg("object")}
+    # )
+
+
+@configclass
+class CurriculumCfg:
+    """Curriculum terms for the MDP."""
+
+    action_rate = CurrTerm(
+        func=mdp.modify_reward_weight, params={"term_name": "action_rate", "weight": -1e-1, "num_steps": 10000}
+    )
+
+    joint_vel = CurrTerm(
+        func=mdp.modify_reward_weight, params={"term_name": "joint_vel", "weight": -1e-1, "num_steps": 10000}
+    )
+
+
 ##
 # Environment configuration
 ##
@@ -200,14 +231,18 @@ class YCBLiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: YCBLiftSceneCfg = YCBLiftSceneCfg(num_envs=4096, env_spacing=2.5)
+    scene: YCBLiftSceneCfg = YCBLiftSceneCfg(num_envs=512, env_spacing=2.5)
     # Basic settings
+
+    # try out commandsCFG once it is able to lift
+
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     # MDP settings
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
+    curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
         """Post initialization."""
@@ -224,3 +259,6 @@ class YCBLiftEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 16 * 1024
         self.sim.physx.friction_correlation_distance = 0.00625
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 100000
+        # self.sim.physx.gpu_collision_stack_size = 2 ** 30
+        # self.sim.physx.gpu_max_rigid_patch_count = 2 ** 19
+        # self.sim.physx.gpu_collision_stack_size = 2 ** 30

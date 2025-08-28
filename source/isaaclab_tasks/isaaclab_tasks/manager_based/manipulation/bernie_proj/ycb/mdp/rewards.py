@@ -23,7 +23,7 @@ def object_is_lifted_push_task(
 ) -> torch.Tensor:
     """Reward the agent for lifting the object above the minimal height."""
     object: RigidObject = env.scene[object_cfg.name]
-    height = (object.data.root_pos_w[:, 2] - env.event_manager.get_term_cfg("reset_object").func.init_object_state[:, 2])
+    height = (object.data.root_pos_w[:, 2] - env.event_manager.get_term_cfg("reset_objects").func.init_object_state[:, 2])
     # print("HEIGHT", height)
     return torch.where(height > minimal_height, 1.0, 0.0)
 
@@ -158,11 +158,14 @@ def object_goal_distance(
     obj: RigidObject = env.scene[object_cfg.name]
     goal: RigidObject = env.scene[goal_object_cfg.name]
 
+    # print("OBJ POS: ", obj.data.root_pos_w[:, :3])
+    # print("GOAL POS: ", goal.data.root_pos_w[:, :3])
+
     # Euclidean distance between object and goal_object (world frame)
     distance = torch.norm(goal.data.root_pos_w[:, :3] - obj.data.root_pos_w[:, :3], dim=1)
 
     # Lift gate: object must be above its initial height by minimal_height
-    init_z = env.event_manager.get_term_cfg("reset_object_state").func.init_object_state[:, 2]
+    init_z = env.event_manager.get_term_cfg("reset_objects").func.init_object_state[:, 2]
     height = obj.data.root_pos_w[:, 2] - init_z
 
     # Tanh kernel (ensure std > 0)
