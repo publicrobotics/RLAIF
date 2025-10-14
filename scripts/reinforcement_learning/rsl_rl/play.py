@@ -19,6 +19,7 @@ import cli_args  # isort: skip
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
 parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
+parser.add_argument("--video_interval", type=int, default=2000, help="Interval between video recordings (in steps).")
 parser.add_argument(
     "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
 )
@@ -28,6 +29,7 @@ parser.add_argument(
     "--agent", type=str, default="rsl_rl_cfg_entry_point", help="Name of the RL agent configuration entry point."
 )
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
+parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument(
     "--use_pretrained_checkpoint",
     action="store_true",
@@ -96,6 +98,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # override configurations with non-hydra CLI arguments
     agent_cfg: RslRlBaseRunnerCfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    agent_cfg.max_iterations = (
+        args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
+    )
 
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
@@ -132,7 +137,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if args_cli.video:
         video_kwargs = {
             "video_folder": os.path.join(log_dir, "videos", "play"),
-            "step_trigger": lambda step: step == 0,
+            "step_trigger": lambda step: step % args_cli.video_interval == 0,
             "video_length": args_cli.video_length,
             "disable_logger": True,
         }

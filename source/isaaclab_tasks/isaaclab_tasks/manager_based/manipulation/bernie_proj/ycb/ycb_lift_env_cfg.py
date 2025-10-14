@@ -25,6 +25,16 @@ import pathlib
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 workspace = pathlib.Path(os.getenv("WORKSPACE_FOLDER", pathlib.Path.cwd()))
 
+# for the camera
+from isaaclab.sensors import TiledCameraCfg
+from isaaclab.sensors import CameraCfg
+from isaaclab.sim import PinholeCameraCfg
+
+# Viewer port, this will zoom in the default camera used in displaying a scene
+# in IsaacLab
+from isaaclab.envs import ViewerCfg  # viewport camera config
+
+
 ##
 # Scene definition
 ##
@@ -44,6 +54,18 @@ class YCBLiftSceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
         debug_vis=False,
     )
+
+    # tiled_camera: CameraCfg = CameraCfg(
+    #     prim_path="/World/envs/env_.*/record",
+    #     offset=CameraCfg.OffsetCfg(pos=(-7.0, 0.0, 3.0), rot=(0.9945, 0.0, 0.1045, 0.0), convention="world"),
+    #     data_types=["rgb"],
+    #     spawn=sim_utils.PinholeCameraCfg(
+    #         focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 20.0)
+    #     ),
+    #     width=80,
+    #     height=80,
+    # )
+
 
     # robots: will be populated by agent env cfg
     robot: ArticulationCfg = MISSING
@@ -142,8 +164,8 @@ class EventCfg:
         params={
             "pose_range":
             {
-                "x": (0.150, 0.250),
-                "y": (0.150, 0.250),
+                "x": (0.150, 0.200),
+                "y": (0.150, 0.200),
                 "z": (0.610, 0.610),
             },
             "velocity_range": {},
@@ -231,7 +253,7 @@ class YCBLiftEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the lifting environment."""
 
     # Scene settings
-    scene: YCBLiftSceneCfg = YCBLiftSceneCfg(num_envs=512, env_spacing=2.5)
+    scene: YCBLiftSceneCfg = YCBLiftSceneCfg(num_envs=1, env_spacing=2.5)
     # Basic settings
 
     # try out commandsCFG once it is able to lift
@@ -243,6 +265,12 @@ class YCBLiftEnvCfg(ManagerBasedRLEnvCfg):
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
     curriculum: CurriculumCfg = CurriculumCfg()
+    viewer: ViewerCfg = ViewerCfg(
+        # Move the camera closer (eye) and where it looks (lookat)
+        eye=(2.00, 2.00, 2.00),        # was ~ (7.5, 7.5, 7.5) by default
+        lookat=(0.5, 0.0, 0.6),     # your table/work area
+        resolution=(1280, 720),
+    )
 
     def __post_init__(self):
         """Post initialization."""
