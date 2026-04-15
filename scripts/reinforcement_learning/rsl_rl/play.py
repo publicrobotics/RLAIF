@@ -93,6 +93,31 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
+# adding in nessecary imports
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1a
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config, ycb_rby1_lift_env_cfg, ycb_rby1_pick_and_place_env_cfg, ycb_rby1_push_env_cfg
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import cabinet
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.cabinet.config import rby1a
+
+# importing the cabinet revolute enviornment 
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import cabinet_revolute
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.cabinet_revolute.config import rby1a
+
+# importing the franka cabinet based enviornments 
+"""
+Prismatic
+"""
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import cabinet_prismatic_franka
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.cabinet_prismatic_franka.config import franka
+
+"""
+Revolute
+"""
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import cabinet_revolute_franka
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.cabinet_revolute_franka.config import franka
+
 
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
