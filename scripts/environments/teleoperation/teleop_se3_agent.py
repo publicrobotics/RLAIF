@@ -74,9 +74,21 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.manager_based.manipulation.lift import mdp
 from isaaclab_tasks.utils import parse_env_cfg
 
+# Bernie_Proj Enviornments
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
+
 if args_cli.enable_pinocchio:
     import isaaclab_tasks.manager_based.locomanipulation.pick_place  # noqa: F401
     import isaaclab_tasks.manager_based.manipulation.pick_place  # noqa: F401
+# Bernie_Proj Enviornments
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.kitchen.config import rby1
+from isaaclab_tasks.manager_based.manipulation.bernie_proj.ycb.config.rby1 import ik_del_pick_and_place_config
+from isaaclab_tasks.manager_based.manipulation.bernie_proj import ycb
+
 
 # import logger
 logger = logging.getLogger(__name__)

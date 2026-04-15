@@ -133,8 +133,8 @@ import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-# import logger
-logger = logging.getLogger(__name__)
+# RLAIF enviornments
+# TODO: remove old objects. Include real world objects
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
